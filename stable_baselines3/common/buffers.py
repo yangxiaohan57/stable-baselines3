@@ -383,19 +383,28 @@ class RolloutBuffer(BaseBuffer):
         last_values = last_values.clone().cpu().numpy().flatten()
 
         last_gae_lam = 0
+        cumm_reward = last_values
+        self.returns = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
+
         for step in reversed(range(self.buffer_size)):
             if step == self.buffer_size - 1:
                 next_non_terminal = 1.0 - dones
-                next_values = last_values
+                #next_values = last_values
             else:
                 next_non_terminal = 1.0 - self.episode_starts[step + 1]
-                next_values = self.values[step + 1]
-            delta = self.rewards[step] + self.gamma * next_values * next_non_terminal - self.values[step]
-            last_gae_lam = delta + self.gamma * self.gae_lambda * next_non_terminal * last_gae_lam
-            self.advantages[step] = last_gae_lam
+                #next_values = self.values[step + 1]
+            #delta = self.rewards[step] + self.gamma * next_values * next_non_terminal - self.values[step]
+            #last_gae_lam = delta + self.gamma * self.gae_lambda * next_non_terminal * last_gae_lam
+            #self.advantages[step] = last_gae_lam
+
+            cumm_reward = self.rewards[step] + self.gamma * cumm_reward * next_non_terminal
+            self.returns[step] = cumm_reward
+            self.advantages[step] = cumm_reward - self.values[step]
+
+
         # TD(lambda) estimator, see Github PR #375 or "Telescoping in TD(lambda)"
         # in David Silver Lecture 4: https://www.youtube.com/watch?v=PnHCvfgC_ZA
-        self.returns = self.advantages + self.values
+        #self.returns = self.advantages + self.values
 
     def add(
         self,
